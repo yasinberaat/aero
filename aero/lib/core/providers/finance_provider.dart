@@ -55,12 +55,13 @@ class FinanceProvider extends ChangeNotifier {
     required double amount,
     required String category,
     String? note,
+    DateTime? date,
   }) async {
     final expense = ExpenseModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       amount: amount,
       category: category,
-      date: _selectedDate,
+      date: date ?? DateTime.now(),
       note: note,
     );
     

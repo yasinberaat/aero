@@ -146,10 +146,8 @@ class _FinancePageState extends State<FinancePage> {
         ),
         child: Text(
           '%0',
-          style: TextStyle(
-            color: Colors.grey.shade400,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            fontSize: 16,
           ),
         ),
       );
@@ -186,10 +184,7 @@ class _FinancePageState extends State<FinancePage> {
           const SizedBox(width: 8),
           Text(
             isIncrease ? 'artış' : 'azalış',
-            style: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 12,
-            ),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),
@@ -209,9 +204,13 @@ class _FinancePageState extends State<FinancePage> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AeroColors.obsidianCard,
+            color: Theme.of(context).cardTheme.color,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AeroColors.cardBorder),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AeroColors.cardBorder
+                  : Colors.grey.shade300,
+            ),
           ),
           child: Column(
             children: [
@@ -236,7 +235,7 @@ class _FinancePageState extends State<FinancePage> {
                 ],
               ),
               const SizedBox(height: 16),
-              // Takvim grid (7x5) - Kar/Zarar renklendirmesi
+              // Takvim grid (7x5) - Kar/Zarar renklendirmesi - Tıklanabilir
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -267,25 +266,31 @@ class _FinancePageState extends State<FinancePage> {
                   }
                   
                   final isToday = day == 29; // Mock bugün
+                  final selectedDate = DateTime(2026, 1, day);
                   
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: bgColor ?? Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isToday 
-                            ? AeroColors.electricBlue 
-                            : Colors.transparent,
-                        width: 2,
+                  return GestureDetector(
+                    onTap: () => _showAddExpenseForDateDialog(context, selectedDate),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: bgColor ?? Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isToday 
+                              ? AeroColors.electricBlue 
+                              : Colors.transparent,
+                          width: 2,
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$day',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: hasTransaction ? Colors.white : Colors.grey.shade600,
-                          fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                      child: Center(
+                        child: Text(
+                          '$day',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: hasTransaction 
+                                ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black)
+                                : Theme.of(context).textTheme.bodySmall?.color,
+                            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                          ),
                         ),
                       ),
                     ),
@@ -320,7 +325,9 @@ class _FinancePageState extends State<FinancePage> {
                 sections: [
                   PieChartSectionData(
                     value: 1,
-                    color: Colors.grey.shade700,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade700
+                        : Colors.grey.shade400,
                     radius: 50,
                     showTitle: false,
                   ),
@@ -541,6 +548,14 @@ class _FinancePageState extends State<FinancePage> {
     showDialog(
       context: context,
       builder: (_) => const AddIncomeDialog(),
+    );
+  }
+  
+  /// Belirli bir tarih için harcama ekleme dialog'u
+  void _showAddExpenseForDateDialog(BuildContext context, DateTime selectedDate) {
+    showDialog(
+      context: context,
+      builder: (_) => AddExpenseDialog(selectedDate: selectedDate),
     );
   }
 

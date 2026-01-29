@@ -25,7 +25,9 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AeroColors.obsidianCard,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AeroColors.obsidianCard
+          : Colors.white,
       title: const Text('Gelir Gir'),
       content: Column(
         mainAxisSize: MainAxisSize.min,

@@ -69,9 +69,13 @@ class HomePage extends StatelessWidget {
                         },
                         child: Container(
                           decoration: BoxDecoration(
-                            color: AeroColors.obsidianCard,
+                            color: Theme.of(context).cardTheme.color,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AeroColors.cardBorder),
+                            border: Border.all(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? AeroColors.cardBorder
+                                  : Colors.grey.shade300,
+                            ),
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -101,11 +105,12 @@ class HomePage extends StatelessWidget {
                                   size: 48,
                                   color: AeroColors.electricBlue,
                                 ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 16),
                               Text(
                                 category.name,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),

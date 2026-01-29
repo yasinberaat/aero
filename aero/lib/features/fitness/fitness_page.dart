@@ -76,9 +76,13 @@ class _FitnessPageState extends State<FitnessPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AeroColors.obsidianCard,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AeroColors.cardBorder),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AeroColors.cardBorder
+              : Colors.grey.shade300,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,9 +173,13 @@ class _FitnessPageState extends State<FitnessPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AeroColors.obsidianCard,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AeroColors.cardBorder),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AeroColors.cardBorder
+              : Colors.grey.shade300,
+        ),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -220,7 +228,7 @@ class _FitnessPageState extends State<FitnessPage> {
           if (workouts.isEmpty)
             Text(
               'Boş',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              style: Theme.of(context).textTheme.bodySmall,
             )
           else
             ...workouts.map((workout) => Padding(
@@ -312,7 +320,9 @@ class _FitnessPageState extends State<FitnessPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AeroColors.obsidianCard,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AeroColors.obsidianCard
+            : Colors.white,
         title: Text(workout.exercise),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -321,9 +331,8 @@ class _FitnessPageState extends State<FitnessPage> {
             // Tarih/saat (sol üst, küçük, opak)
             Text(
               dateStr,
-              style: TextStyle(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontSize: 10,
-                color: Colors.grey.shade600,
               ),
             ),
             const SizedBox(height: 12),

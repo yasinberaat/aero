@@ -6,9 +6,11 @@ import '../core/models/category_model.dart';
 import '../features/finance/finance_page.dart';
 import '../features/work/work_page.dart';
 import '../features/fitness/fitness_page.dart';
+import '../features/category/category_page.dart';
 import 'custom_icons.dart';
+import 'add_category_dialog.dart';
 
-/// Aero drawer - Sadece korumalı kategorilere navigasyon
+/// Aero drawer - Kategori navigasyonu + ekleme
 class AeroDrawer extends StatelessWidget {
   const AeroDrawer({super.key});
 
@@ -32,17 +34,36 @@ class AeroDrawer extends StatelessWidget {
             ),
           ),
           
-          // Korumalı kategoriler (Finance, Work, Fitness)
+          // Kategori Ekle Button
+          ListTile(
+            leading: const Icon(
+              Icons.add_circle_outline,
+              color: Colors.greenAccent,
+            ),
+            title: const Text(
+              'KATEGORİ EKLE',
+              style: TextStyle(
+                color: Colors.greenAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+            onTap: () => _showAddCategoryDialog(context),
+          ),
+          
+          const Divider(indent: 20, endIndent: 20),
+          
+          // Tüm kategoriler
           Expanded(
             child: Consumer<CategoryProvider>(
               builder: (context, categoryProvider, child) {
-                final protectedCategories = categoryProvider.getProtectedCategories();
+                final categories = categoryProvider.getAllCategories();
                 
                 return ListView.builder(
                   padding: EdgeInsets.zero,
-                  itemCount: protectedCategories.length,
+                  itemCount: categories.length,
                   itemBuilder: (context, index) {
-                    final category = protectedCategories[index];
+                    final category = categories[index];
                     return _CategoryListItem(category: category);
                   },
                 );
@@ -51,6 +72,13 @@ class AeroDrawer extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+  
+  void _showAddCategoryDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => const AddCategoryDialog(),
     );
   }
 }
@@ -107,16 +135,8 @@ class _CategoryListItem extends StatelessWidget {
         page = const FitnessPage();
         break;
       default:
-        // Custom category - show placeholder for now
-        page = Scaffold(
-          appBar: AppBar(title: Text(category.name.toUpperCase())),
-          body: Center(
-            child: Text(
-              '${category.name} sayfası yakında...',
-              style: const TextStyle(color: Colors.grey),
-            ),
-          ),
-        );
+        // Custom category - to-do page
+        page = CategoryPage(category: category);
     }
     
     Navigator.push(

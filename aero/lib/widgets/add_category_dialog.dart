@@ -23,7 +23,9 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AeroColors.obsidianCard,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AeroColors.obsidianCard
+          : Colors.white,
       title: const Text('Yeni Kategori Ekle'),
       content: TextField(
         controller: _nameController,

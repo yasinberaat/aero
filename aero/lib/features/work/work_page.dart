@@ -67,6 +67,29 @@ class _WorkPageState extends State<WorkPage> {
             const SizedBox(height: 16),
             
             _buildPeriodicTasksList(),
+            
+            const SizedBox(height: 32),
+            
+            // Haftalık görevler takvimi
+            if (_weeklyMonthlyTasks.where((t) => t.type == 'Haftalık').isNotEmpty) ...[
+              Text(
+                'HAFTALIK GÖREVLER TAKVİMİ',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 16),
+              _buildWeeklyTasksCalendar(),
+              const SizedBox(height: 32),
+            ],
+            
+            // Aylık görevler takvimi
+            if (_weeklyMonthlyTasks.where((t) => t.type == 'Aylık').isNotEmpty) ...[
+              Text(
+                'AYLIK GÖREVLER TAKVİMİ',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 16),
+              _buildMonthlyTasksCalendar(),
+            ],
           ],
         ),
       ),
@@ -78,9 +101,13 @@ class _WorkPageState extends State<WorkPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AeroColors.obsidianCard,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AeroColors.cardBorder),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AeroColors.cardBorder
+              : Colors.grey.shade300,
+        ),
       ),
       child: Column(
         children: [
@@ -147,10 +174,7 @@ class _WorkPageState extends State<WorkPage> {
           ),
           Text(
             task.day,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           IconButton(
             icon: const Icon(Icons.delete, size: 20),
@@ -175,10 +199,16 @@ class _WorkPageState extends State<WorkPage> {
           Checkbox(value: false, onChanged: null),
           Expanded(
             child: Container(
-              height: 20,
+              height: 1,
               decoration: BoxDecoration(
-                color: Colors.grey.shade800,
-                borderRadius: BorderRadius.circular(4),
+                border: Border(
+                  bottom: BorderSide(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade700
+                        : Colors.grey.shade400,
+                    width: 1,
+                  ),
+                ),
               ),
             ),
           ),
@@ -241,7 +271,7 @@ class _WorkPageState extends State<WorkPage> {
           if (tasks.isEmpty)
             Text(
               'Boş',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              style: Theme.of(context).textTheme.bodySmall,
             )
           else
             ...tasks.map((task) => Padding(
@@ -280,9 +310,13 @@ class _WorkPageState extends State<WorkPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AeroColors.obsidianCard,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AeroColors.cardBorder),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AeroColors.cardBorder
+              : Colors.grey.shade300,
+        ),
       ),
       child: Column(
         children: [
@@ -307,6 +341,126 @@ class _WorkPageState extends State<WorkPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+  
+  /// Haftalık görevler takvimi
+  Widget _buildWeeklyTasksCalendar() {
+    final weeklyTasks = _weeklyMonthlyTasks.where((t) => t.type == 'Haftalık').toList();
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AeroColors.cardBorder
+              : Colors.grey.shade300,
+        ),
+      ),
+      child: Column(
+        children: [
+          // Hafta günleri
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: _weeklyCalendar.keys.map((day) {
+              final dayTasks = weeklyTasks.where((t) => 
+                t.deadline.weekday == _getDayNumber(day)
+              ).toList();
+              
+              return Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      day.substring(0, 3),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...dayTasks.map((task) => Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: _getPriorityColor(task.priority),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        task.title,
+                        style: const TextStyle(
+                          fontSize: 8,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    )),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Aylık görevler takvimi
+  Widget _buildMonthlyTasksCalendar() {
+    final monthlyTasks = _weeklyMonthlyTasks.where((t) => t.type == 'Aylık').toList();
+    final now = DateTime.now();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AeroColors.obsidianCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AeroColors.cardBorder),
+      ),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 7,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 1,
+        ),
+        itemCount: daysInMonth,
+        itemBuilder: (context, index) {
+          final day = index + 1;
+          final dayTasks = monthlyTasks.where((t) => 
+            t.deadline.day == day && 
+            t.deadline.month == now.month
+          ).toList();
+          
+          return Container(
+            decoration: BoxDecoration(
+              color: dayTasks.isNotEmpty 
+                  ? _getPriorityColor(dayTasks.first.priority).withValues(alpha: 0.3)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: day == now.day 
+                    ? AeroColors.electricBlue 
+                    : Colors.transparent,
+                width: 2,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                '$day',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: day == now.day ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -371,9 +525,8 @@ class _WorkPageState extends State<WorkPage> {
                       const SizedBox(width: 8),
                       Text(
                         '${task.type} • ${DateFormat('dd/MM/yyyy HH:mm').format(task.deadline)}',
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontSize: 11,
-                          color: Colors.grey.shade600,
                         ),
                       ),
                     ],
@@ -405,7 +558,9 @@ class _WorkPageState extends State<WorkPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AeroColors.obsidianCard,
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? AeroColors.obsidianCard
+              : Colors.white,
           title: const Text('Günlük Görev Ekle'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -530,7 +685,9 @@ class _WorkPageState extends State<WorkPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AeroColors.obsidianCard,
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? AeroColors.obsidianCard
+              : Colors.white,
           title: const Text('Haftalık/Aylık Görev Ekle'),
           content: SingleChildScrollView(
             child: Column(
@@ -569,9 +726,23 @@ class _WorkPageState extends State<WorkPage> {
                     border: OutlineInputBorder(),
                   ),
                   items: TaskPriority.values.map((priority) {
+                    final color = _getPriorityColor(priority);
                     return DropdownMenuItem(
                       value: priority,
-                      child: Text(_getPriorityText(priority)),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(_getPriorityText(priority)),
+                        ],
+                      ),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -677,6 +848,11 @@ class _WorkPageState extends State<WorkPage> {
       'Pazar',
     ];
     return days[weekday - 1];
+  }
+  
+  int _getDayNumber(String dayName) {
+    final days = _weeklyCalendar.keys.toList();
+    return days.indexOf(dayName) + 1;
   }
   
   Color _getPriorityColor(TaskPriority priority) {

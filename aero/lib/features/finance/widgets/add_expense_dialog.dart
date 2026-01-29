@@ -6,7 +6,9 @@ import '../../../core/constants/expense_categories.dart';
 
 /// Harcama ekleme dialog'u
 class AddExpenseDialog extends StatefulWidget {
-  const AddExpenseDialog({super.key});
+  final DateTime? selectedDate;
+  
+  const AddExpenseDialog({super.key, this.selectedDate});
 
   @override
   State<AddExpenseDialog> createState() => _AddExpenseDialogState();
@@ -16,6 +18,13 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
   String _selectedCategory = ExpenseCategories.shopping;
+  late DateTime _expenseDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _expenseDate = widget.selectedDate ?? DateTime.now();
+  }
 
   @override
   void dispose() {
@@ -27,7 +36,9 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AeroColors.obsidianCard,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AeroColors.obsidianCard
+          : Colors.white,
       title: const Text('Harcama Gir'),
       content: SingleChildScrollView(
         child: Column(
@@ -87,6 +98,33 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
               ),
               maxLines: 2,
             ),
+            
+            const SizedBox(height: 16),
+            
+            // Tarih seçimi
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.calendar_today),
+              title: Text(
+                '${_expenseDate.day}/${_expenseDate.month}/${_expenseDate.year}',
+                style: const TextStyle(fontSize: 14),
+              ),
+              subtitle: const Text('Tarih'),
+              onTap: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: _expenseDate,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                );
+                
+                if (date != null) {
+                  setState(() {
+                    _expenseDate = date;
+                  });
+                }
+              },
+            ),
           ],
         ),
       ),
@@ -117,6 +155,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
       note: _noteController.text.trim().isEmpty 
           ? null 
           : _noteController.text.trim(),
+      date: _expenseDate,
     );
     
     Navigator.pop(context);

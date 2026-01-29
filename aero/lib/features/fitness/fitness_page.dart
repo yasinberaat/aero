@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/aero_theme.dart';
+import '../../core/services/storage_service.dart';
+import '../../core/models/workout_model.dart';
 import '../../widgets/theme_toggle_button.dart';
 
 /// Fitness / Spor sayfası - Haftalık antreman programı
@@ -17,8 +19,7 @@ class _FitnessPageState extends State<FitnessPage> {
   final _repsController = TextEditingController();
   String _selectedDay = 'Pazartesi';
   
-  // Mock data - gerçek implementasyonda Hive kullanılacak
-  final Map<String, List<WorkoutEntry>> _weeklyWorkouts = {
+  Map<String, List<WorkoutModel>> _weeklyWorkouts = {
     'Pazartesi': [],
     'Salı': [],
     'Çarşamba': [],
@@ -27,6 +28,33 @@ class _FitnessPageState extends State<FitnessPage> {
     'Cumartesi': [],
     'Pazar': [],
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWorkouts();
+  }
+  
+  void _loadWorkouts() {
+    final allWorkouts = StorageService.getAllWorkouts();
+    setState(() {
+      _weeklyWorkouts = {
+        'Pazartesi': [],
+        'Salı': [],
+        'Çarşamba': [],
+        'Perşembe': [],
+        'Cuma': [],
+        'Cumartesi': [],
+        'Pazar': [],
+      };
+      
+      for (var workout in allWorkouts) {
+        if (_weeklyWorkouts.containsKey(workout.day)) {
+          _weeklyWorkouts[workout.day]!.add(workout);
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -209,7 +237,7 @@ class _FitnessPageState extends State<FitnessPage> {
   }
   
   /// Günlük kolon (dikey)
-  Widget _buildDayColumn(String day, List<WorkoutEntry> workouts) {
+  Widget _buildDayColumn(String day, List<WorkoutModel> workouts) {
     return SizedBox(
       width: 120,
       child: Column(
@@ -241,8 +269,8 @@ class _FitnessPageState extends State<FitnessPage> {
   }
   
   /// Hareket chip'i (tıklanabilir, yorumlu ise yeşil)
-  Widget _buildWorkoutChip(WorkoutEntry workout) {
-    final hasComment = workout.comment != null;
+  Widget _buildWorkoutChip(WorkoutModel workout) {
+    final hasComment = workout.comments.isNotEmpty;
     
     return GestureDetector(
       onTap: () => _showCommentDialog(workout),
@@ -257,7 +285,7 @@ class _FitnessPageState extends State<FitnessPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              workout.exercise,
+              workout.exerciseName,
               style: TextStyle(
                 color: hasComment ? Colors.white : Colors.grey.shade400,
                 fontWeight: FontWeight.bold,
@@ -278,7 +306,7 @@ class _FitnessPageState extends State<FitnessPage> {
   }
   
   /// Hareket ekleme
-  void _addWorkout() {
+  void _addWorkout() async {
     final exercise = _exerciseController.text.trim();
     final sets = int.tryParse(_setsController.text.trim());
     final reps = int.tryParse(_repsController.text.trim());
@@ -290,30 +318,34 @@ class _FitnessPageState extends State<FitnessPage> {
       return;
     }
     
-    setState(() {
-      _weeklyWorkouts[_selectedDay]!.add(
-        WorkoutEntry(
-          exercise: exercise,
-          sets: sets,
-          reps: reps,
-          day: _selectedDay,
-        ),
-      );
-    });
+    final workout = WorkoutModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      day: _selectedDay,
+      exerciseName: exercise,
+      sets: sets,
+      reps: reps,
+    );
+    
+    await StorageService.addWorkout(workout);
+    _loadWorkouts();
     
     // Formu temizle
     _exerciseController.clear();
     _setsController.clear();
     _repsController.clear();
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$exercise eklendi')),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$exercise eklendi')),
+      );
+    }
   }
   
   /// Yorum yazma dialog'u
-  void _showCommentDialog(WorkoutEntry workout) {
-    final commentController = TextEditingController(text: workout.comment ?? '');
+  void _showCommentDialog(WorkoutModel workout) {
+    final commentController = TextEditingController(
+      text: workout.comments.isNotEmpty ? workout.comments.last : '',
+    );
     final now = DateTime.now();
     final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(now);
     
@@ -323,7 +355,7 @@ class _FitnessPageState extends State<FitnessPage> {
         backgroundColor: Theme.of(context).brightness == Brightness.dark
             ? AeroColors.obsidianCard
             : Colors.white,
-        title: Text(workout.exercise),
+        title: Text(workout.exerciseName),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,15 +387,26 @@ class _FitnessPageState extends State<FitnessPage> {
             child: const Text('İptal'),
           ),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                workout.comment = commentController.text.trim();
-                workout.commentDate = now;
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Yorum kaydedildi')),
-              );
+            onPressed: () async {
+              final comment = commentController.text.trim();
+              if (comment.isNotEmpty) {
+                final updatedWorkout = WorkoutModel(
+                  id: workout.id,
+                  day: workout.day,
+                  exerciseName: workout.exerciseName,
+                  sets: workout.sets,
+                  reps: workout.reps,
+                  comments: [...workout.comments, comment],
+                );
+                await StorageService.addWorkout(updatedWorkout);
+                _loadWorkouts();
+              }
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Yorum kaydedildi')),
+                );
+              }
             },
             child: const Text('Kaydet'),
           ),
@@ -373,21 +416,3 @@ class _FitnessPageState extends State<FitnessPage> {
   }
 }
 
-/// Workout entry model
-class WorkoutEntry {
-  final String exercise;
-  final int sets;
-  final int reps;
-  final String day;
-  String? comment;
-  DateTime? commentDate;
-  
-  WorkoutEntry({
-    required this.exercise,
-    required this.sets,
-    required this.reps,
-    required this.day,
-    this.comment,
-    this.commentDate,
-  });
-}

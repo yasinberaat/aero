@@ -83,7 +83,7 @@ class AeroDrawer extends StatelessWidget {
   }
 }
 
-/// Kategori liste item'ı (sadece navigasyon)
+/// Kategori liste item'ı (korumalı kategoriler navigasyon, özel kategoriler silinebilir)
 class _CategoryListItem extends StatelessWidget {
   final CategoryModel category;
 
@@ -91,32 +91,92 @@ class _CategoryListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: category.name == 'Finans'
-          ? CustomIcons.dollar(
-              color: AeroColors.electricBlue,
-              size: 24,
-            )
-          : category.name == 'İş / Emlak'
-              ? CustomIcons.folder(
-                  color: AeroColors.electricBlue,
-                  size: 24,
-                )
-              : category.name == 'Spor'
-                  ? CustomIcons.dumbbell(
-                      color: AeroColors.electricBlue,
-                      size: 24,
-                    )
-                  : Icon(
-                      IconData(category.iconCodePoint, fontFamily: 'MaterialIcons'),
-                      color: AeroColors.electricBlue,
-                    ),
-      title: Text(
-        category.name,
-        style: Theme.of(context).textTheme.bodyMedium,
+    final categoryProvider = context.read<CategoryProvider>();
+    
+    // Korumalı kategoriler için Dismissible yok
+    if (category.isProtected) {
+      return ListTile(
+        leading: category.name == 'Finans'
+            ? CustomIcons.dollar(
+                color: AeroColors.electricBlue,
+                size: 24,
+              )
+            : category.name == 'İş / Emlak'
+                ? CustomIcons.folder(
+                    color: AeroColors.electricBlue,
+                    size: 24,
+                  )
+                : category.name == 'Spor'
+                    ? CustomIcons.dumbbell(
+                        color: AeroColors.electricBlue,
+                        size: 24,
+                      )
+                    : Icon(
+                        IconData(category.iconCodePoint, fontFamily: 'MaterialIcons'),
+                        color: AeroColors.electricBlue,
+                      ),
+        title: Text(
+          category.name,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _navigateToCategory(context, category),
+      );
+    }
+    
+    // Özel kategoriler için Dismissible
+    return Dismissible(
+      key: Key(category.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        color: Colors.redAccent,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Icon(Icons.delete, color: Colors.white),
       ),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => _navigateToCategory(context, category),
+      confirmDismiss: (_) async {
+        return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? AeroColors.obsidianCard
+                : Colors.white,
+            title: const Text('Kategoriyi Sil'),
+            content: Text('${category.name} kategorisini silmek istediğinize emin misiniz?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('İptal'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                ),
+                child: const Text('Sil'),
+              ),
+            ],
+          ),
+        ) ?? false;
+      },
+      onDismissed: (_) {
+        categoryProvider.deleteCategory(category.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${category.name} silindi')),
+        );
+      },
+      child: ListTile(
+        leading: Icon(
+          IconData(category.iconCodePoint, fontFamily: 'MaterialIcons'),
+          color: AeroColors.electricBlue,
+        ),
+        title: Text(
+          category.name,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _navigateToCategory(context, category),
+      ),
     );
   }
   

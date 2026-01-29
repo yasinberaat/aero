@@ -46,41 +46,75 @@ class _CategoryPageState extends State<CategoryPage> {
   
   /// Görevler listesi
   Widget _buildTasksList() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? AeroColors.cardBorder
-              : Colors.grey.shade300,
-        ),
-      ),
-      child: Column(
-        children: [
-          ..._tasks.map((task) => _buildTaskItem(task)),
-          
-          // Ekle butonu
-          InkWell(
-            onTap: _showAddTaskDialog,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add, color: AeroColors.electricBlue),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Görev Ekle',
-                    style: TextStyle(color: AeroColors.electricBlue),
+    final activeTasks = _tasks.where((t) => !t.isCompleted).toList();
+    final completedTasks = _tasks.where((t) => t.isCompleted).toList();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Aktif görevler
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardTheme.color,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AeroColors.cardBorder
+                  : Colors.grey.shade300,
+            ),
+          ),
+          child: Column(
+            children: [
+              ...activeTasks.map((task) => _buildTaskItem(task)),
+              
+              // Ekle butonu
+              InkWell(
+                onTap: _showAddTaskDialog,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add, color: AeroColors.electricBlue),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Görev Ekle',
+                        style: TextStyle(color: AeroColors.electricBlue),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
+            ],
+          ),
+        ),
+        
+        // Tamamlanan görevler (varsa)
+        if (completedTasks.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text(
+            'TAMAMLANANLAR',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardTheme.color,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AeroColors.cardBorder
+                    : Colors.grey.shade300,
+              ),
+            ),
+            child: Column(
+              children: completedTasks.map((task) => _buildTaskItem(task)).toList(),
             ),
           ),
         ],
-      ),
+      ],
     );
   }
   

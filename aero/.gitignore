@@ -1,0 +1,72 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+# --- AERO ÖZEL EKLEMELER ---
+
+# 1. Android İmza Dosyaları (Keystore)
+# Markete uygulama yüklemek için gereken anahtarlar asla sızmamalı.
+*.jks
+*.keystore
+*.p12
+*.key.properties
+
+# 2. Hassas Yapılandırma Dosyaları
+# Firebase veya Google Maps API key içeren dosyalar.
+/android/app/google-services.json
+/ios/Runner/GoogleService-Info.plist
+
+# 3. Çevresel Değişkenler ve Gizli Şifreler
+# Eğer API anahtarlarını bir .env dosyasında tutacaksan:
+.env
+.env.*
+
+# 4. Yerel Veritabanı ve Hafıza
+# Uygulama testleri sırasında oluşan yerel veriler.
+*.db
+*.db-journal
+
+# 5. Windsurf / Agents Logları
+# Memory Bank dosyalarını Git'te tutmalısın ama bazı geçici dosyalar oluşabilir.
+memory-bank/.temp/

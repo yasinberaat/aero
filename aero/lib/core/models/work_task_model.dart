@@ -47,6 +47,12 @@ class WorkTaskModel extends HiveObject {
   @HiveField(6)
   bool isCompleted;
 
+  @HiveField(7)
+  final List<int>? repeatDays; // Haftanın günleri: 1=Pzt, 2=Sal, ..., 7=Paz
+
+  @HiveField(8)
+  final bool repeatForever; // Sürekli tekrarla
+
   WorkTaskModel({
     required this.id,
     required this.title,
@@ -55,5 +61,7 @@ class WorkTaskModel extends HiveObject {
     this.day,
     required this.deadline,
     this.isCompleted = false,
+    this.repeatDays,
+    this.repeatForever = false,
   });
 }

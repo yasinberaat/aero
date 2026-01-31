@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/aero_theme.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/services/storage_service.dart';
+import '../../core/models/work_task_model.dart';
 import '../../widgets/theme_toggle_button.dart';
 
-enum TaskPriority { veryImportant, important, moderate, unimportant }
-
-/// İş / Emlak sayfası - Günlük/Haftalık/Aylık görevler
+/// İş sayfası - Günlük/Haftalık/Aylık görevler
 class WorkPage extends StatefulWidget {
   const WorkPage({super.key});
 
@@ -15,10 +15,11 @@ class WorkPage extends StatefulWidget {
 }
 
 class _WorkPageState extends State<WorkPage> {
-  final List<DailyTask> _dailyTasks = [];
-  final List<PeriodicTask> _weeklyMonthlyTasks = [];
+  List<WorkTaskModel> _dailyTasks = [];
+  List<WorkTaskModel> _weeklyTasks = [];
+  List<WorkTaskModel> _monthlyTasks = [];
   
-  final Map<String, List<DailyTask>> _weeklyCalendar = {
+  final Map<String, List<WorkTaskModel>> _weeklyCalendar = {
     'Pazartesi': [],
     'Salı': [],
     'Çarşamba': [],
@@ -29,10 +30,36 @@ class _WorkPageState extends State<WorkPage> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    _loadTasks();
+  }
+  
+  void _loadTasks() {
+    final allTasks = StorageService.getAllWorkTasks();
+    setState(() {
+      _dailyTasks = allTasks.where((t) => t.type == TaskType.daily).toList();
+      _weeklyTasks = allTasks.where((t) => t.type == TaskType.weekly).toList();
+      _monthlyTasks = allTasks.where((t) => t.type == TaskType.monthly).toList();
+      
+      // Haftalık takvimi güncelle
+      _weeklyCalendar.forEach((key, value) {
+        value.clear();
+      });
+      
+      for (var task in _dailyTasks) {
+        if (task.day != null && _weeklyCalendar.containsKey(task.day)) {
+          _weeklyCalendar[task.day]!.add(task);
+        }
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('İŞ / EMLAK'),
+        title: const Text('İŞ'),
         actions: const [
           ThemeToggleButton(),
         ],
@@ -56,40 +83,6 @@ class _WorkPageState extends State<WorkPage> {
             
             // Haftalık takvim
             _buildWeeklyCalendar(),
-            
-            const SizedBox(height: 32),
-            
-            // Haftalık/Aylık görevler
-            Text(
-              'HAFTALIK / AYLIK GÖREVLER',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-            const SizedBox(height: 16),
-            
-            _buildPeriodicTasksList(),
-            
-            const SizedBox(height: 32),
-            
-            // Haftalık görevler takvimi
-            if (_weeklyMonthlyTasks.where((t) => t.type == 'Haftalık').isNotEmpty) ...[
-              Text(
-                'HAFTALIK GÖREVLER TAKVİMİ',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const SizedBox(height: 16),
-              _buildWeeklyTasksCalendar(),
-              const SizedBox(height: 32),
-            ],
-            
-            // Aylık görevler takvimi
-            if (_weeklyMonthlyTasks.where((t) => t.type == 'Aylık').isNotEmpty) ...[
-              Text(
-                'AYLIK GÖREVLER TAKVİMİ',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const SizedBox(height: 16),
-              _buildMonthlyTasksCalendar(),
-            ],
           ],
         ),
       ),
@@ -146,17 +139,25 @@ class _WorkPageState extends State<WorkPage> {
   }
   
   /// Günlük görev item
-  Widget _buildDailyTaskItem(DailyTask task) {
+  Widget _buildDailyTaskItem(WorkTaskModel task) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
           Checkbox(
             value: task.isCompleted,
-            onChanged: (value) {
-              setState(() {
-                task.isCompleted = value ?? false;
-              });
+            onChanged: (value) async {
+              final updatedTask = WorkTaskModel(
+                id: task.id,
+                title: task.title,
+                type: task.type,
+                isCompleted: value ?? false,
+                deadline: task.deadline,
+                day: task.day,
+                priority: task.priority,
+              );
+              await StorageService.updateWorkTask(updatedTask);
+              _loadTasks();
             },
           ),
           Expanded(
@@ -168,21 +169,20 @@ class _WorkPageState extends State<WorkPage> {
                     : null,
                 color: task.isCompleted 
                     ? Colors.grey 
-                    : Colors.white,
+                    : null,
               ),
             ),
           ),
-          Text(
-            task.day,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          if (task.day != null)
+            Text(
+              task.day!,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           IconButton(
             icon: const Icon(Icons.delete, size: 20),
-            onPressed: () {
-              setState(() {
-                _dailyTasks.remove(task);
-                _weeklyCalendar[task.day]?.remove(task);
-              });
+            onPressed: () async {
+              await StorageService.deleteWorkTask(task.id);
+              _loadTasks();
             },
           ),
         ],
@@ -254,7 +254,7 @@ class _WorkPageState extends State<WorkPage> {
   }
   
   /// Günlük kolon
-  Widget _buildDayColumn(String day, List<DailyTask> tasks) {
+  Widget _buildDayColumn(String day, List<WorkTaskModel> tasks) {
     return SizedBox(
       width: 120,
       child: Column(
@@ -305,7 +305,129 @@ class _WorkPageState extends State<WorkPage> {
     );
   }
   
-  /// Haftalık/Aylık görevler listesi
+  /// Haftalık görevler listesi
+  Widget _buildWeeklyTasksList() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AeroColors.cardBorder
+              : Colors.grey.shade300,
+        ),
+      ),
+      child: Column(
+        children: [
+          ..._weeklyTasks.map((task) => _buildTaskItem(task)),
+          
+          InkWell(
+            onTap: () {},
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add, color: AeroColors.electricBlue),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Görev Ekle',
+                    style: TextStyle(color: AeroColors.electricBlue),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Aylık görevler listesi
+  Widget _buildMonthlyTasksList() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AeroColors.cardBorder
+              : Colors.grey.shade300,
+        ),
+      ),
+      child: Column(
+        children: [
+          ..._monthlyTasks.map((task) => _buildTaskItem(task)),
+          
+          InkWell(
+            onTap: () {},
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add, color: AeroColors.electricBlue),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Görev Ekle',
+                    style: TextStyle(color: AeroColors.electricBlue),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Genel görev item
+  Widget _buildTaskItem(WorkTaskModel task) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Checkbox(
+            value: task.isCompleted,
+            onChanged: (value) async {
+              final updatedTask = WorkTaskModel(
+                id: task.id,
+                title: task.title,
+                type: task.type,
+                isCompleted: value ?? false,
+                deadline: task.deadline,
+                day: task.day,
+                priority: task.priority,
+              );
+              await StorageService.updateWorkTask(updatedTask);
+              _loadTasks();
+            },
+          ),
+          Expanded(
+            child: Text(
+              task.title,
+              style: TextStyle(
+                decoration: task.isCompleted 
+                    ? TextDecoration.lineThrough 
+                    : null,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete, size: 20),
+            onPressed: () async {
+              await StorageService.deleteWorkTask(task.id);
+              _loadTasks();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Eski periodic tasks listesi (kullanılmıyor)
   Widget _buildPeriodicTasksList() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -320,7 +442,7 @@ class _WorkPageState extends State<WorkPage> {
       ),
       child: Column(
         children: [
-          ..._weeklyMonthlyTasks.map((task) => _buildPeriodicTaskItem(task)),
+          // Eski kod - kullanılmıyor
           
           // Ekle butonu
           InkWell(
@@ -347,7 +469,7 @@ class _WorkPageState extends State<WorkPage> {
   
   /// Haftalık görevler takvimi
   Widget _buildWeeklyTasksCalendar() {
-    final weeklyTasks = _weeklyMonthlyTasks.where((t) => t.type == 'Haftalık').toList();
+    final weeklyTasks = _weeklyTasks;
     
     return Container(
       padding: const EdgeInsets.all(16),
@@ -409,7 +531,7 @@ class _WorkPageState extends State<WorkPage> {
   
   /// Aylık görevler takvimi
   Widget _buildMonthlyTasksCalendar() {
-    final monthlyTasks = _weeklyMonthlyTasks.where((t) => t.type == 'Aylık').toList();
+    final monthlyTasks = _monthlyTasks;
     final now = DateTime.now();
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     
@@ -537,9 +659,7 @@ class _WorkPageState extends State<WorkPage> {
             IconButton(
               icon: const Icon(Icons.delete, size: 20),
               onPressed: () {
-                setState(() {
-                  _weeklyMonthlyTasks.remove(task);
-                });
+                // Eski kod - kullanılmıyor
               },
             ),
           ],
@@ -553,6 +673,8 @@ class _WorkPageState extends State<WorkPage> {
     final titleController = TextEditingController();
     String selectedDay = _getCurrentDayName();
     DateTime? deadline;
+    final selectedRepeatDays = <int>[];
+    var repeatForever = false;
     
     showDialog(
       context: context,
@@ -562,74 +684,125 @@ class _WorkPageState extends State<WorkPage> {
               ? AeroColors.obsidianCard
               : Colors.white,
           title: const Text('Günlük Görev Ekle'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Görev',
-                  hintText: 'Örn: 5 FSBO',
-                  border: OutlineInputBorder(),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Görev',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              
-              DropdownButtonFormField<String>(
-                initialValue: selectedDay,
-                decoration: const InputDecoration(
-                  labelText: 'Gün',
-                  border: OutlineInputBorder(),
-                ),
-                items: _weeklyCalendar.keys.map((day) {
-                  return DropdownMenuItem(value: day, child: Text(day));
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setDialogState(() => selectedDay = value);
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.access_time),
-                title: Text(
-                  deadline == null
-                      ? 'Deadline Seç'
-                      : DateFormat('dd/MM/yyyy HH:mm').format(deadline!),
-                  style: const TextStyle(fontSize: 14),
-                ),
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                  );
-                  
-                  if (date != null && context.mounted) {
-                    final time = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay.now(),
-                    );
-                    
-                    if (time != null) {
-                      setDialogState(() {
-                        deadline = DateTime(
-                          date.year,
-                          date.month,
-                          date.day,
-                          time.hour,
-                          time.minute,
-                        );
-                      });
+                const SizedBox(height: 12),
+                
+                DropdownButtonFormField<String>(
+                  value: selectedDay,
+                  decoration: const InputDecoration(
+                    labelText: 'Gün',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _weeklyCalendar.keys.map((day) {
+                    return DropdownMenuItem(value: day, child: Text(day));
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => selectedDay = value);
                     }
-                  }
-                },
-              ),
-            ],
+                  },
+                ),
+                const SizedBox(height: 12),
+                
+                // Deadline ve Sürekli Tekrarla
+                Row(
+                  children: [
+                    Expanded(
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.access_time, size: 20),
+                        title: Text(
+                          deadline == null
+                              ? 'Deadline Seç'
+                              : DateFormat('HH:mm').format(deadline!),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        onTap: () async {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.now(),
+                          );
+                          
+                          if (time != null) {
+                            setDialogState(() {
+                              final now = DateTime.now();
+                              deadline = DateTime(
+                                now.year,
+                                now.month,
+                                now.day,
+                                time.hour,
+                                time.minute,
+                              );
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Checkbox(
+                          value: repeatForever,
+                          onChanged: (value) {
+                            if (deadline == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Öncelikle deadline seçiniz'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
+                            setDialogState(() {
+                              repeatForever = value ?? false;
+                            });
+                          },
+                        ),
+                        const Text(
+                          'Sürekli\nTekrarla',
+                          style: TextStyle(fontSize: 9),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                
+                // Tekrarlama başlığı
+                const Text(
+                  'Tekrarlama',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                
+                // Gün seçim chip'leri
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _buildDayChip('Pzt', 1, selectedRepeatDays, setDialogState),
+                    _buildDayChip('Sal', 2, selectedRepeatDays, setDialogState),
+                    _buildDayChip('Çar', 3, selectedRepeatDays, setDialogState),
+                    _buildDayChip('Per', 4, selectedRepeatDays, setDialogState),
+                    _buildDayChip('Cum', 5, selectedRepeatDays, setDialogState),
+                    _buildDayChip('Cmt', 6, selectedRepeatDays, setDialogState),
+                    _buildDayChip('Paz', 7, selectedRepeatDays, setDialogState),
+                  ],
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -637,7 +810,7 @@ class _WorkPageState extends State<WorkPage> {
               child: const Text('İptal'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 final title = titleController.text.trim();
                 if (title.isEmpty || deadline == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -646,25 +819,29 @@ class _WorkPageState extends State<WorkPage> {
                   return;
                 }
                 
-                final task = DailyTask(
+                final task = WorkTaskModel(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
                   title: title,
+                  type: TaskType.daily,
                   day: selectedDay,
                   deadline: deadline!,
+                  repeatDays: selectedRepeatDays.isEmpty ? null : selectedRepeatDays,
+                  repeatForever: repeatForever,
                 );
                 
-                setState(() {
-                  _dailyTasks.add(task);
-                  _weeklyCalendar[selectedDay]!.add(task);
-                });
+                await StorageService.addWorkTask(task);
+                _loadTasks();
                 
                 // Bildirim planla
                 NotificationService().scheduleTaskReminder(
-                  id: task.hashCode,
+                  id: task.id.hashCode,
                   taskName: task.title,
                   deadline: task.deadline,
                 );
                 
-                Navigator.pop(context);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
               },
               child: const Text('Ekle'),
             ),
@@ -815,8 +992,9 @@ class _WorkPageState extends State<WorkPage> {
                   deadline: deadline!,
                 );
                 
+                // Eski kod - kullanılmıyor
                 setState(() {
-                  _weeklyMonthlyTasks.add(task);
+                  // _weeklyMonthlyTasks.add(task);
                 });
                 
                 // Bildirim planla
@@ -855,7 +1033,8 @@ class _WorkPageState extends State<WorkPage> {
     return days.indexOf(dayName) + 1;
   }
   
-  Color _getPriorityColor(TaskPriority priority) {
+  Color _getPriorityColor(TaskPriority? priority) {
+    if (priority == null) return Colors.grey;
     switch (priority) {
       case TaskPriority.veryImportant:
         return Colors.red;
@@ -868,7 +1047,8 @@ class _WorkPageState extends State<WorkPage> {
     }
   }
   
-  String _getPriorityText(TaskPriority priority) {
+  String _getPriorityText(TaskPriority? priority) {
+    if (priority == null) return 'Bilinmiyor';
     switch (priority) {
       case TaskPriority.veryImportant:
         return 'Çok Önemli';
@@ -879,6 +1059,36 @@ class _WorkPageState extends State<WorkPage> {
       case TaskPriority.unimportant:
         return 'Önemsiz';
     }
+  }
+  
+  /// Gün seçim chip'i
+  Widget _buildDayChip(
+    String label,
+    int dayNumber,
+    List<int> selectedDays,
+    StateSetter setDialogState,
+  ) {
+    final isSelected = selectedDays.contains(dayNumber);
+    
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        setDialogState(() {
+          if (selected) {
+            selectedDays.add(dayNumber);
+          } else {
+            selectedDays.remove(dayNumber);
+          }
+        });
+      },
+      selectedColor: AeroColors.electricBlue,
+      checkmarkColor: Colors.white,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : null,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
   }
 }
 

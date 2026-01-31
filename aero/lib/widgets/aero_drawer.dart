@@ -19,11 +19,11 @@ class AeroDrawer extends StatelessWidget {
     return Drawer(
       child: Column(
         children: [
-          // AERO Header
+          // FORGE Header
           const DrawerHeader(
             child: Center(
               child: Text(
-                'AERO',
+                'FORGE',
                 style: TextStyle(
                   color: AeroColors.electricBlue,
                   fontSize: 32,
@@ -101,7 +101,7 @@ class _CategoryListItem extends StatelessWidget {
                 color: AeroColors.electricBlue,
                 size: 24,
               )
-            : category.name == 'İş / Emlak'
+            : category.name == 'İş'
                 ? CustomIcons.folder(
                     color: AeroColors.electricBlue,
                     size: 24,

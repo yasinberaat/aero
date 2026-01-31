@@ -17,7 +17,7 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AERO'),
+        title: const Text('F O R G E'),
         actions: const [
           ThemeToggleButton(),
         ],
@@ -55,7 +55,7 @@ class HomePage extends StatelessWidget {
                               context,
                               MaterialPageRoute(builder: (_) => const FinancePage()),
                             );
-                          } else if (category.name == 'İş / Emlak') {
+                          } else if (category.name == 'İş') {
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const WorkPage()),
@@ -86,7 +86,7 @@ class HomePage extends StatelessWidget {
                                   color: AeroColors.electricBlue,
                                   size: 48,
                                 )
-                              else if (category.name == 'İş / Emlak')
+                              else if (category.name == 'İş')
                                 CustomIcons.folder(
                                   color: AeroColors.electricBlue,
                                   size: 48,

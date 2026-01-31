@@ -96,4 +96,40 @@ class FinanceProvider extends ChangeNotifier {
     await StorageService.deleteIncome(id);
     notifyListeners();
   }
+  
+  /// Günlük kar/zarar hesapla (gelir - gider)
+  double getDailyProfit() {
+    return getTotalIncome() - getTotalExpenses();
+  }
+  
+  /// Haftalık kar/zarar hesapla (son 7 gün)
+  double getWeeklyProfit() {
+    final now = DateTime.now();
+    final weekStart = now.subtract(const Duration(days: 7));
+    
+    double totalIncome = 0;
+    double totalExpenses = 0;
+    
+    for (int i = 0; i < 7; i++) {
+      final date = weekStart.add(Duration(days: i));
+      final dayIncomes = StorageService.getIncomesByDate(date);
+      final dayExpenses = StorageService.getExpensesByDate(date);
+      
+      totalIncome += dayIncomes.fold(0.0, (sum, income) => sum + income.amount);
+      totalExpenses += dayExpenses.fold(0.0, (sum, expense) => sum + expense.amount);
+    }
+    
+    return totalIncome - totalExpenses;
+  }
+  
+  /// Belirli bir tarih için kar/zarar hesapla
+  double getProfitForDate(DateTime date) {
+    final dayIncomes = StorageService.getIncomesByDate(date);
+    final dayExpenses = StorageService.getExpensesByDate(date);
+    
+    final income = dayIncomes.fold(0.0, (sum, inc) => sum + inc.amount);
+    final expenses = dayExpenses.fold(0.0, (sum, exp) => sum + exp.amount);
+    
+    return income - expenses;
+  }
 }

@@ -37,7 +37,7 @@ class AeroApp extends StatelessWidget {
         builder: (context, themeProvider, child) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
-            title: 'Aero',
+            title: 'Forge',
             themeMode: themeProvider.themeMode,
             theme: AeroTheme.lightTheme,
             darkTheme: AeroTheme.darkTheme,

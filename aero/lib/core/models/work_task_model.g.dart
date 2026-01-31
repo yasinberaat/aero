@@ -24,13 +24,15 @@ class WorkTaskModelAdapter extends TypeAdapter<WorkTaskModel> {
       day: fields[4] as String?,
       deadline: fields[5] as DateTime,
       isCompleted: fields[6] as bool,
+      repeatDays: (fields[7] as List?)?.cast<int>(),
+      repeatForever: fields[8] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, WorkTaskModel obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +46,11 @@ class WorkTaskModelAdapter extends TypeAdapter<WorkTaskModel> {
       ..writeByte(5)
       ..write(obj.deadline)
       ..writeByte(6)
-      ..write(obj.isCompleted);
+      ..write(obj.isCompleted)
+      ..writeByte(7)
+      ..write(obj.repeatDays)
+      ..writeByte(8)
+      ..write(obj.repeatForever);
   }
 
   @override

@@ -199,6 +199,7 @@ class _FitnessPageState extends State<FitnessPage> {
   /// Haftalık takvim (yatay - soldan sağa)
   Widget _buildWeeklyCalendar() {
     return Container(
+      height: 300,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardTheme.color,
@@ -211,7 +212,9 @@ class _FitnessPageState extends State<FitnessPage> {
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: Row(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.vertical,
+          child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: _weeklyWorkouts.entries.map((entry) {
             final day = entry.key;
@@ -231,6 +234,7 @@ class _FitnessPageState extends State<FitnessPage> {
               ],
             );
           }).toList(),
+        ),
         ),
       ),
     );
@@ -355,7 +359,55 @@ class _FitnessPageState extends State<FitnessPage> {
         backgroundColor: Theme.of(context).brightness == Brightness.dark
             ? AeroColors.obsidianCard
             : Colors.white,
-        title: Text(workout.exerciseName),
+        title: Row(
+          children: [
+            Expanded(child: Text(workout.exerciseName)),
+            IconButton(
+              icon: const Icon(Icons.edit, size: 20),
+              onPressed: () {
+                Navigator.pop(context);
+                _showEditWorkoutDialog(workout);
+              },
+              tooltip: 'Düzenle',
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent),
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? AeroColors.obsidianCard
+                        : Colors.white,
+                    title: const Text('Antremanı Sil'),
+                    content: Text('${workout.exerciseName} antremanını silmek istediğinize emin misiniz?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('İptal'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                        child: const Text('Sil'),
+                      ),
+                    ],
+                  ),
+                );
+                
+                if (confirm == true && context.mounted) {
+                  await StorageService.deleteWorkout(workout.id);
+                  _loadWorkouts();
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Antrenman silindi')),
+                  );
+                }
+              },
+              tooltip: 'Sil',
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,6 +457,101 @@ class _FitnessPageState extends State<FitnessPage> {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Yorum kaydedildi')),
+                );
+              }
+            },
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Antrenman düzenleme dialog'u
+  void _showEditWorkoutDialog(WorkoutModel workout) {
+    final nameController = TextEditingController(text: workout.exerciseName);
+    final setsController = TextEditingController(text: workout.sets.toString());
+    final repsController = TextEditingController(text: workout.reps.toString());
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AeroColors.obsidianCard
+            : Colors.white,
+        title: const Text('Antrenmanı Düzenle'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Hareket Adı',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: setsController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Set',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: repsController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Tekrar',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              final sets = int.tryParse(setsController.text.trim());
+              final reps = int.tryParse(repsController.text.trim());
+              
+              if (name.isEmpty || sets == null || reps == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Lütfen tüm alanları doldurun')),
+                );
+                return;
+              }
+              
+              final updatedWorkout = WorkoutModel(
+                id: workout.id,
+                day: workout.day,
+                exerciseName: name,
+                sets: sets,
+                reps: reps,
+                comments: workout.comments,
+              );
+              
+              await StorageService.addWorkout(updatedWorkout);
+              _loadWorkouts();
+              
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Antrenman güncellendi')),
                 );
               }
             },

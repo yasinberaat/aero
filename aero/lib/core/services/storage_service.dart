@@ -49,7 +49,7 @@ class StorageService {
     final defaultCategories = [
       CategoryModel(
         id: 'work',
-        name: 'İş / Emlak',
+        name: 'İş',
         iconCodePoint: 0xe24d, // Icons.folder_outlined
         isProtected: true,
       ),

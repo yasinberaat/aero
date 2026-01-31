@@ -16,13 +16,20 @@
 - ✅ Finance: Zaman aralığı sekmeleri (1g/1h/1a/3a/6a)
 - ✅ Finance: Yüzdelik değişim göstergesi (ok + renk)
 - ✅ Finance: Aylık takvim görünümü
+- ✅ Finance: Gelecek tarihli harcama girişi engellendi
 - ✅ Drawer: "Kategori Ekle" butonu (üstte sabit)
 - ✅ Drawer: Dismissible kategoriler (work/fitness/finance korumalı)
 - ✅ Drawer: Tıklanabilir navigasyon
 - ✅ Kategori ekleme: Sadeleştirilmiş (isim + deadline)
+- ✅ Custom kategoriler: To-do sistemi (görev ekleme, deadline, tamamlama)
+- ✅ Custom kategoriler: Tamamlanan görevler ayrı bölümde
+- ✅ Work page: Boş görev slotları alt çizgi olarak gösteriliyor
+- ✅ Fitness page: Hive entegrasyonu (veriler artık kalıcı)
+- ✅ Light mode: Tüm container/dialog/text adaptif
 - ✅ Hive local storage (kalıcı veri)
 - ✅ Provider state management
 - ✅ Bottom overflow hatası düzeltildi
+- ✅ Release build: AAB paketi başarıyla oluşturuldu (Jan 30, 2026)
 
 ## Yapılacaklar (To-Do)
 - ☐ Work feature implementasyonu (to-do maddeleri + deadline)
@@ -64,6 +71,14 @@
   - "Gelir Gir" button (42px height, 67% width)
   - Expense category selection (6 categories)
   - Daily per-category summary at bottom
+
+### Phase 5 — Release Build ✅ COMPLETED (Jan 30, 2026)
+- Android SDK licenses accepted successfully
+- Release AAB bundle built successfully
+  - File: `build/app/outputs/bundle/release/app-release.aab`
+  - Size: 41.9 MB
+  - Build time: 5.1 seconds
+- App ready for Google Play Store upload
 
 ## Implementation details
 - **Core models**: ExpenseModel, IncomeModel, CategoryModel (Hive TypeAdapters)

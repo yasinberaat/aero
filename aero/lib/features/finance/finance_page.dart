@@ -78,15 +78,15 @@ class _FinancePageState extends State<FinancePage> {
                   ),
                 ),
                 
-                const SizedBox(height: 50),
+                const SizedBox(height: 24),
+                
+                // Takvim (günlük harcama detayları) - Yukarı taşındı
+                _buildCalendar(context),
+                
+                const SizedBox(height: 24),
                 
                 // Daily Summary (gelir + harcamalar)
                 _buildDailySummary(context, totalIncome, expensesByCategory),
-                
-                const SizedBox(height: 32),
-                
-                // Takvim (günlük harcama detayları)
-                _buildCalendar(context),
               ],
             ),
           );
@@ -134,170 +134,202 @@ class _FinancePageState extends State<FinancePage> {
     );
   }
   
-  /// Yüzdelik değişim göstergesi (yeşil yukarı ok / kırmızı aşağı ok)
+  /// Günlük kar/zarar ve haftalık kar/zarar göstergesi
   Widget _buildPercentageChange(double currentExpenses) {
-    // Veri yoksa sadece %0 göster, sembol yok
-    if (currentExpenses == 0) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          '%0',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-    }
+    final financeProvider = context.watch<FinanceProvider>();
+    final dailyProfit = financeProvider.getDailyProfit();
+    final weeklyProfit = financeProvider.getWeeklyProfit();
     
-    // Mock data - gerçek implementasyonda önceki dönem verileriyle karşılaştır
-    final double previousExpenses = 2000; // Örnek önceki dönem
-    final double change = ((currentExpenses - previousExpenses) / previousExpenses) * 100;
-    final bool isIncrease = change > 0;
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isIncrease ? Icons.arrow_upward : Icons.arrow_downward,
-            color: isIncrease ? Colors.red : Colors.green,
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '${change.abs().toStringAsFixed(1)}%',
-            style: TextStyle(
-              color: isIncrease ? Colors.red : Colors.green,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+    return Column(
+      children: [
+        // Günlük kar/zarar
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: dailyProfit >= 0 
+                ? Colors.green.withValues(alpha: 0.1)
+                : Colors.red.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: dailyProfit >= 0 ? Colors.green : Colors.red,
+              width: 1,
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            isIncrease ? 'artış' : 'azalış',
-            style: Theme.of(context).textTheme.bodySmall,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                dailyProfit >= 0 ? Icons.trending_up : Icons.trending_down,
+                color: dailyProfit >= 0 ? Colors.green : Colors.red,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Bugün',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    '₺${dailyProfit.abs().toStringAsFixed(0)}',
+                    style: TextStyle(
+                      color: dailyProfit >= 0 ? Colors.green : Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 8),
+              Text(
+                dailyProfit >= 0 ? 'KAR' : 'ZARAR',
+                style: TextStyle(
+                  color: dailyProfit >= 0 ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+        // Haftalık kar/zarar
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Bu Hafta: ',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              Text(
+                '₺${weeklyProfit.abs().toStringAsFixed(0)}',
+                style: TextStyle(
+                  color: weeklyProfit >= 0 ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                weeklyProfit >= 0 ? 'KAR' : 'ZARAR',
+                style: TextStyle(
+                  color: weeklyProfit >= 0 ? Colors.green : Colors.red,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
   
-  /// Takvim widget'ı (günlük harcama detayları)
+  /// Haftalık takvim widget'ı (Pazartesi-Pazar) - Kompakt versiyon
   Widget _buildCalendar(BuildContext context) {
+    final financeProvider = context.watch<FinanceProvider>();
+    final now = DateTime.now();
+    
+    // Bu haftanın Pazartesi'sini bul
+    final weekday = now.weekday; // 1=Pazartesi, 7=Pazar
+    final monday = now.subtract(Duration(days: weekday - 1));
+    
+    // Haftanın 7 gününü oluştur
+    final weekDays = List.generate(7, (index) => monday.add(Duration(days: index)));
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'AYLIK ÖZET',
-          style: Theme.of(context).textTheme.labelLarge,
+          'BU HAFTA',
+          style: Theme.of(context).textTheme.labelSmall,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
             color: Theme.of(context).cardTheme.color,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: Theme.of(context).brightness == Brightness.dark
                   ? AeroColors.cardBorder
                   : Colors.grey.shade300,
             ),
           ),
-          child: Column(
-            children: [
-              // Takvim başlığı (ay/yıl)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: () {},
-                  ),
-                  Text(
-                    'Ocak 2026',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: weekDays.map((date) {
+              final isToday = date.year == now.year && 
+                              date.month == now.month && 
+                              date.day == now.day;
+              final isPast = date.isBefore(now) && !isToday;
+              final isFuture = date.isAfter(now);
+              
+              // Geçmiş günler için kar/zarar hesapla
+              final profit = isPast ? financeProvider.getProfitForDate(date) : 0.0;
+              
+              // Renk belirleme
+              Color? bgColor;
+              if (isPast) {
+                bgColor = profit >= 0 
+                    ? Colors.green.withValues(alpha: 0.3)
+                    : Colors.red.withValues(alpha: 0.3);
+              } else if (isFuture) {
+                bgColor = Colors.transparent;
+              }
+              
+              // Gün adı (Pzt, Sal, vb.)
+              const dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+              final dayName = dayNames[date.weekday - 1];
+              
+              return GestureDetector(
+                onTap: isPast ? () => _showAddExpenseForDateDialog(context, date) : null,
+                child: Container(
+                  width: 38,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isToday 
+                          ? AeroColors.electricBlue 
+                          : Colors.transparent,
+                      width: 2,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: () {},
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Takvim grid (7x5) - Kar/Zarar renklendirmesi - Tıklanabilir
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 7,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                ),
-                itemCount: 35,
-                itemBuilder: (context, index) {
-                  final day = index + 1;
-                  if (day > 31) {
-                    return const SizedBox.shrink();
-                  }
-                  
-                  // Mock data - gerçek implementasyonda o gün için gelir/harcama hesapla
-                  // Şimdilik örnek: çift günler kar (gelir > harcama), tek günler zarar
-                  final dayIncome = day % 2 == 0 ? 500.0 : 100.0;
-                  final dayExpense = day % 2 == 0 ? 300.0 : 400.0;
-                  final isProfit = dayIncome > dayExpense;
-                  final hasTransaction = day % 3 != 0; // Her 3 günde bir işlem yok
-                  
-                  Color? bgColor;
-                  if (hasTransaction) {
-                    bgColor = isProfit 
-                        ? Colors.green.withValues(alpha: 0.3)
-                        : Colors.red.withValues(alpha: 0.3);
-                  }
-                  
-                  final isToday = day == 29; // Mock bugün
-                  final selectedDate = DateTime(2026, 1, day);
-                  
-                  return GestureDetector(
-                    onTap: () => _showAddExpenseForDateDialog(context, selectedDate),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: bgColor ?? Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        dayName,
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
                           color: isToday 
-                              ? AeroColors.electricBlue 
-                              : Colors.transparent,
-                          width: 2,
+                              ? AeroColors.electricBlue
+                              : (isFuture ? Colors.grey : null),
                         ),
                       ),
-                      child: Center(
-                        child: Text(
-                          '$day',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: hasTransaction 
-                                ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black)
-                                : Theme.of(context).textTheme.bodySmall?.color,
-                            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                          ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${date.day}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: isFuture ? Colors.grey : null,
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ],
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ),
       ],
@@ -310,10 +342,10 @@ class _FinancePageState extends State<FinancePage> {
     double totalExpenses,
     Map<String, double> expensesByCategory,
   ) {
-    final total = totalIncome + totalExpenses;
+    final profit = totalIncome - totalExpenses; // Kar/Zarar = Gelir - Gider
     
     // Veri yoksa gri grafik göster
-    if (total == 0) {
+    if (totalIncome == 0 && totalExpenses == 0) {
       return Stack(
         alignment: Alignment.center,
         children: [
@@ -432,10 +464,19 @@ class _FinancePageState extends State<FinancePage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '₺${total.toStringAsFixed(0)}',
-                  style: const TextStyle(
+                  '₺${profit.abs().toStringAsFixed(0)}',
+                  style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
+                    color: profit >= 0 ? Colors.green : Colors.red,
+                  ),
+                ),
+                Text(
+                  profit >= 0 ? 'KAR' : 'ZARAR',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: profit >= 0 ? Colors.green : Colors.red,
                   ),
                 ),
               ],
@@ -456,13 +497,17 @@ class _FinancePageState extends State<FinancePage> {
     );
   }
   
-  /// Günlük özet (gelir + kategori bazlı harcamalar)
+  /// Günlük özet (gelir + kategori bazlı harcamalar) - detaylı liste
   Widget _buildDailySummary(
     BuildContext context,
     double totalIncome,
     Map<String, double> expensesByCategory,
   ) {
-    if (totalIncome == 0 && expensesByCategory.isEmpty) {
+    final financeProvider = context.watch<FinanceProvider>();
+    final incomes = financeProvider.getTodayIncome();
+    final expenses = financeProvider.getTodayExpenses();
+    
+    if (incomes.isEmpty && expenses.isEmpty) {
       return const SizedBox.shrink();
     }
     
@@ -475,64 +520,140 @@ class _FinancePageState extends State<FinancePage> {
         ),
         const SizedBox(height: 16),
         
-        // Gelir satırı
-        if (totalIncome > 0)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: const BoxDecoration(
-                    color: AeroColors.incomeGreen,
-                    shape: BoxShape.circle,
-                  ),
+        // Gelir listesi
+        ...incomes.map((income) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: const BoxDecoration(
+                  color: AeroColors.incomeGreen,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text('Gelir'),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Gelir'),
+                    if (income.note != null && income.note!.isNotEmpty)
+                      Text(
+                        income.note!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  ],
                 ),
-                Text(
-                  '₺${totalIncome.toStringAsFixed(0)}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AeroColors.incomeGreen,
-                  ),
+              ),
+              Text(
+                '₺${income.amount.toStringAsFixed(0)}',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AeroColors.incomeGreen,
                 ),
-              ],
-            ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, size: 18),
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                          ? AeroColors.obsidianCard
+                          : Colors.white,
+                      title: const Text('Geliri Sil'),
+                      content: const Text('Bu gelir kaydını silmek istediğinize emin misiniz?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('İptal'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                          child: const Text('Sil'),
+                        ),
+                      ],
+                    ),
+                  );
+                  
+                  if (confirm == true) {
+                    await financeProvider.deleteIncome(income.id);
+                  }
+                },
+              ),
+            ],
           ),
+        )),
         
-        // Harcama kategorileri
-        ...expensesByCategory.entries.map((entry) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: ExpenseCategories.getColor(entry.key),
-                    shape: BoxShape.circle,
-                  ),
+        // Harcama listesi
+        ...expenses.map((expense) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: ExpenseCategories.getColor(expense.category),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    entry.key,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(expense.category),
+                    if (expense.note != null && expense.note!.isNotEmpty)
+                      Text(
+                        expense.note!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  ],
                 ),
-                Text(
-                  '₺${entry.value.toStringAsFixed(0)}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              ),
+              Text(
+                '₺${expense.amount.toStringAsFixed(0)}',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
-          )),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, size: 18),
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                          ? AeroColors.obsidianCard
+                          : Colors.white,
+                      title: const Text('Harcamayı Sil'),
+                      content: const Text('Bu harcama kaydını silmek istediğinize emin misiniz?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('İptal'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                          child: const Text('Sil'),
+                        ),
+                      ],
+                    ),
+                  );
+                  
+                  if (confirm == true) {
+                    await financeProvider.deleteExpense(expense.id);
+                  }
+                },
+              ),
+            ],
+          ),
+        )),
       ],
     );
   }
